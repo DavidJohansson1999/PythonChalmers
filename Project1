@@ -1,0 +1,25 @@
+import numpy as np
+import scipy as sp
+import matplotlib.pyplot as plt
+
+
+def read_coordinate_file(filename):
+    with open(filename, mode='r') as file:
+        coord_list = []
+        for line in file:
+            [a, b] = line.strip("{} \n").split(sep=',')
+            a = float(a)
+            b = float(b)
+            x = np.pi * b / 180
+            y = np.log(np.tan((np.pi / 4) + (np.pi * a) / 360))
+            coord_list.append([x, y])
+    return np.array(coord_list, dtype=float)
+
+def plot_points(coord_list):
+    for line in coord_list:
+         plt.plot(*line,'o', markersize=1, color='red')
+    plt.show()
+
+
+coord_list = (read_coordinate_file('GermanyCities.txt'))
+plot_points(coord_list)
