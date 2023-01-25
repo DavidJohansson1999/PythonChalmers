@@ -1,6 +1,7 @@
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 
 
 def read_coordinate_file(filename):
@@ -13,13 +14,59 @@ def read_coordinate_file(filename):
             x = np.pi * b / 180
             y = np.log(np.tan((np.pi / 4) + (np.pi * a) / 360))
             coord_list.append([x, y])
-    return np.array(coord_list, dtype=float)
+    return np.asarray(coord_list, dtype=float)
 
-def plot_points(coord_list):
-    for line in coord_list:
-         plt.plot(*line,'o', markersize=1, color='red')
+
+def plot_points(coord_list, indicies):
+    lines = []
+    for i in range(0, len(indicies[0])):
+        lines.append([coord_list[indicies[0, i]], coord_list[indicies[1, i]]])
+    lc = LineCollection(lines, colors=['k'], linewidths=0.5)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.add_collection(lc)
+    ax.autoscale()
+
+    x = [i[0] for j in lines for i in j]
+    y = [i[1] for j in lines for i in j]
+
+    ax.scatter(x, y, s=5, c='r')
+
     plt.show()
 
 
+def construct_graph_connections(coord_list, radius):
+    distance = []
+    indicies = [[], []]
+    for i in range(0, len(coord_list)):
+        [x1, y1] = coord_list[i]
+        for j in range(i + 1, len(coord_list)):
+            [x2, y2] = coord_list[j]
+            dis = np.hypot(abs(x1 - x2), abs(y1 - y2))
+            if dis <= radius:
+                distance.append(dis)
+                indicies[0].append(i)
+                indicies[1].append(j)
+    return np.asarray(distance, dtype=float), np.asarray(indicies)
+
+
+def construct_graph(indicies, distance, N):
+    mat = sp.sparse.csr_matrix((distance, indicies), shape=(N, N))
+    return mat
+
+
 coord_list = (read_coordinate_file('GermanyCities.txt'))
-plot_points(coord_list)
+
+radius = 0.0025
+distance, indicies = construct_graph_connections(coord_list, radius)
+
+N = len(coord_list)
+mat = construct_graph(indicies, distance, N)
+
+print(coord_list)
+print(indicies)
+print(distance)
+print(mat)
+
+#plot_points(coord_list,indicies)
