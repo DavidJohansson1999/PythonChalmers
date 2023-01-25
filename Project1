@@ -14,24 +14,27 @@ def read_coordinate_file(filename):
             x = np.pi * b / 180
             y = np.log(np.tan((np.pi / 4) + (np.pi * a) / 360))
             coord_list.append([x, y])
-    return np.asarray(coord_list, dtype=float)
+    return np.array(coord_list, dtype=float)
 
 
-def plot_points(coord_list, indicies):
+def plot_points(coord_list, indicies, path):
     lines = []
     for i in range(0, len(indicies[0])):
         lines.append([coord_list[indicies[0, i]], coord_list[indicies[1, i]]])
-    lc = LineCollection(lines, colors=['k'], linewidths=0.5)
+    lc = LineCollection(lines, colors=['gray'], linewidths=0.5)
+
+    pathline = []
+    for i in range(0, len(path) - 1):
+        pathline.append([coord_list[path[i]], coord_list[path[i + 1]]])
+    plc = LineCollection(pathline, colors=['dodgerblue'], linewidths=1.5)
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
+    for line in coord_list:
+        ax.plot(*line, 'ro', markersize=3)
     ax.add_collection(lc)
-    ax.autoscale()
-
-    x = [i[0] for j in lines for i in j]
-    y = [i[1] for j in lines for i in j]
-
-    ax.scatter(x, y, s=5, c='r')
+    ax.add_collection(plc)
+    ax.set_aspect('equal')
 
     plt.show()
 
@@ -39,34 +42,52 @@ def plot_points(coord_list, indicies):
 def construct_graph_connections(coord_list, radius):
     distance = []
     indicies = [[], []]
-    for i in range(0, len(coord_list)):
+    for i in range(0, len(coord_list) - 1):
         [x1, y1] = coord_list[i]
         for j in range(i + 1, len(coord_list)):
             [x2, y2] = coord_list[j]
-            dis = np.hypot(abs(x1 - x2), abs(y1 - y2))
+            dis = np.sqrt(abs(x2 - x1) ** 2 + abs(y2 - y1) ** 2)
             if dis <= radius:
                 distance.append(dis)
                 indicies[0].append(i)
                 indicies[1].append(j)
-    return np.asarray(distance, dtype=float), np.asarray(indicies)
+    return np.array(distance, dtype=float), np.array(indicies)
 
 
 def construct_graph(indicies, distance, N):
-    mat = sp.sparse.csr_matrix((distance, indicies), shape=(N, N))
-    return mat
+    graph = sp.sparse.csr_matrix((distance, indicies), shape=(N, N))
+    return graph
+
+
+def find_shortest_path(graph, start_node, end_node):
+    i = end_node
+    path = [end_node]
+    while i != start_node:
+        D, predecessor = sp.sparse.csgraph.shortest_path(graph, directed=False, return_predecessors=True,
+                                                         indices=[start_node, end_node])
+        i = predecessor[0, i]
+        path.insert(0, i)
+
+    return D[0, end_node], path
 
 
 coord_list = (read_coordinate_file('GermanyCities.txt'))
+print(coord_list)
+print(len(coord_list))
 
 radius = 0.0025
 distance, indicies = construct_graph_connections(coord_list, radius)
-
-N = len(coord_list)
-mat = construct_graph(indicies, distance, N)
-
-print(coord_list)
 print(indicies)
 print(distance)
-print(mat)
 
-#plot_points(coord_list,indicies)
+N = len(coord_list)
+graph = construct_graph(indicies, distance, N)
+print(graph)
+
+start_node = 31
+end_node = 2
+D, path = find_shortest_path(graph, start_node, end_node)
+print(path)
+print(D)
+
+plot_points(coord_list, indicies, path)
