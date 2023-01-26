@@ -1,31 +1,31 @@
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
+import time
 from matplotlib.collections import LineCollection
 
-
 def read_coordinate_file(filename):
+    coord_list = []
     with open(filename, mode='r') as file:
-        coord_list = []
         for line in file:
             [a, b] = line.strip("{} \n").split(sep=',')
             a = float(a)
             b = float(b)
             x = np.pi * b / 180
             y = np.log(np.tan((np.pi / 4) + (np.pi * a) / 360))
-            coord_list.append([x, y])
-    return np.array(coord_list, dtype=float)
+            coord_list.append([x,y])
+    return np.array(coord_list)
 
 
 def plot_points(coord_list, indicies, path):
     lines = []
     for i in range(0, len(indicies[0])):
-        lines.append([coord_list[indicies[0, i]], coord_list[indicies[1, i]]])
+        lines.append([coord_list[indicies[0,i]], coord_list[indicies[1,i]]])
     lc = LineCollection(lines, colors=['gray'], linewidths=0.5)
 
     pathline = []
     for i in range(0, len(path) - 1):
-        pathline.append([coord_list[path[i]], coord_list[path[i + 1]]])
+        pathline.append([coord_list[path[i]], coord_list[path[i+1]]])
     plc = LineCollection(pathline, colors=['dodgerblue'], linewidths=1.5)
 
     fig = plt.figure()
@@ -36,21 +36,28 @@ def plot_points(coord_list, indicies, path):
     ax.add_collection(plc)
     ax.set_aspect('equal')
 
-    plt.show()
 
 
 def construct_graph_connections(coord_list, radius):
     distance = []
     indicies = [[], []]
     for i in range(0, len(coord_list) - 1):
-        [x1, y1] = coord_list[i]
+        x1, y1 = coord_list[i]
         for j in range(i + 1, len(coord_list)):
-            [x2, y2] = coord_list[j]
-            dis = np.sqrt(abs(x2 - x1) ** 2 + abs(y2 - y1) ** 2)
-            if dis <= radius:
-                distance.append(dis)
-                indicies[0].append(i)
-                indicies[1].append(j)
+            x2, y2 = coord_list[j]
+
+            x_diff = abs(x2 - x1)
+            y_diff = abs(y2 - y1)
+
+            if x_diff < radius and y_diff < radius:
+
+                dis = np.sqrt(x_diff ** 2 + y_diff ** 2)
+
+                if dis <= radius:
+                    distance.append(dis)
+                    indicies[0].append(i)
+                    indicies[1].append(j)
+
     return np.array(distance, dtype=float), np.array(indicies)
 
 
@@ -60,34 +67,61 @@ def construct_graph(indicies, distance, N):
 
 
 def find_shortest_path(graph, start_node, end_node):
-    i = end_node
+    D, predecessor = sp.sparse.csgraph.shortest_path(graph, directed=False, return_predecessors=True,
+                                                     indices=start_node)
     path = [end_node]
+    i = end_node
     while i != start_node:
-        D, predecessor = sp.sparse.csgraph.shortest_path(graph, directed=False, return_predecessors=True,
-                                                         indices=[start_node, end_node])
-        i = predecessor[0, i]
-        path.insert(0, i)
+        i = predecessor[i]
+        path.insert(0,i)
 
-    return D[0, end_node], path
+    return D[end_node], path
 
 
-coord_list = (read_coordinate_file('GermanyCities.txt'))
-print(coord_list)
-print(len(coord_list))
 
-radius = 0.0025
+
+filename = 'HungaryCities.txt'
+if filename == 'SampleCoordinates.txt':
+    radius = 0.08
+    start_node = 0
+    end_node = 5
+elif filename == 'HungaryCities.txt':
+    radius = 0.005
+    start_node = 311
+    end_node = 702
+elif filename == 'GermanyCities.txt':
+    radius = 0.0025
+    start_node = 31
+    end_node = 2
+
+start_time1 = time.time()
+coord_list = (read_coordinate_file(filename))
+coord_time = time.time() - start_time1
+
+start_time = time.time()
 distance, indicies = construct_graph_connections(coord_list, radius)
-print(indicies)
-print(distance)
+di_time = time.time() - start_time
 
 N = len(coord_list)
+
+start_time = time.time()
 graph = construct_graph(indicies, distance, N)
-print(graph)
+graph_time = time.time() - start_time
 
-start_node = 31
-end_node = 2
+start_time = time.time()
 D, path = find_shortest_path(graph, start_node, end_node)
-print(path)
-print(D)
+path_time = time.time() - start_time
 
+start_time = time.time()
 plot_points(coord_list, indicies, path)
+plot_time = time.time() - start_time
+
+program_time = time.time()-start_time1
+
+print("\nThe total time to run the program with",filename,"is:",program_time,"s \n")
+print("Read coordinate file:",coord_time,"s")
+print("Construct graph connections:",di_time,"s")
+print("Construct graph:",graph_time,"s")
+print("Find shortest path:",path_time,"s")
+print("Plot:",plot_time,"s")
+plt.show()
