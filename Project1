@@ -1,10 +1,18 @@
+# DAT171 - CA1 
+# David Johansson & Fredrik Nygren
+# 2023-02-01
+
+# Import all the necessary packages
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
 import time
 from matplotlib.collections import LineCollection
+from scipy.spatial import KDTree
+
 
 def read_coordinate_file(filename):
+    # Strip unwanted signs from the file and calculate the coordinates, and return as ndarray
     coord_list = []
     with open(filename, mode='r') as file:
         for line in file:
@@ -13,35 +21,54 @@ def read_coordinate_file(filename):
             b = float(b)
             x = np.pi * b / 180
             y = np.log(np.tan((np.pi / 4) + (np.pi * a) / 360))
-            coord_list.append([x,y])
+            coord_list.append([x, y])
     return np.array(coord_list)
 
 
 def plot_points(coord_list, indicies, path):
+    # Create lines using coordinates and LineCollection
     lines = []
     for i in range(0, len(indicies[0])):
-        lines.append([coord_list[indicies[0,i]], coord_list[indicies[1,i]]])
+        lines.append([coord_list[indicies[0, i]], coord_list[indicies[1, i]]])
     lc = LineCollection(lines, colors=['gray'], linewidths=0.5)
 
+    # Create lines for the path using coordinates, path and LineCollection
     pathline = []
     for i in range(0, len(path) - 1):
-        pathline.append([coord_list[path[i]], coord_list[path[i+1]]])
+        pathline.append([coord_list[path[i]], coord_list[path[i + 1]]])
     plc = LineCollection(pathline, colors=['dodgerblue'], linewidths=1.5)
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
-    for line in coord_list:
-        ax.plot(*line, 'ro', markersize=3)
+    plt.title('Shortest path')
+
+    # Plot points with scatter
+    x = [i[0] for j in lines for i in j]
+    y = [i[1] for j in lines for i in j]
+    ax.scatter(x, y, c='r', s=1.5)
+
+    # Plot lines and pathline
     ax.add_collection(lc)
     ax.add_collection(plc)
     ax.set_aspect('equal')
 
-def construct_fast_graph_connections(coord_list, radius):
-    indicies, distance = sp.spatial.KDTree.query_ball_point(coord_list, radius,Return_sorted=False, return_length=True)
 
-    return indicies, distance
+def construct_fast_graph_connections(coord_list, RADIUS):
+    # Calculate the indicies, or pairs, using the function KDTree, then calculate distance between indicies
+    kd_tree = KDTree(coord_list)
+    indicies = kd_tree.query_pairs(RADIUS, output_type='ndarray')
 
-def construct_graph_connections(coord_list, radius):
+    distance = []
+    for (i, j) in indicies:
+        x_diff = abs(coord_list[i, 0] - coord_list[j, 0])
+        y_diff = abs(coord_list[i, 1] - coord_list[j, 1])
+        dis = np.sqrt(x_diff ** 2 + y_diff ** 2)
+        distance.append(dis)
+    return distance, indicies.transpose()
+
+
+def construct_graph_connections(coord_list, RADIUS):
+    # Calculate the indicies and the distance by looping over all connections
     distance = []
     indicies = [[], []]
     for i in range(0, len(coord_list) - 1):
@@ -52,11 +79,11 @@ def construct_graph_connections(coord_list, radius):
             x_diff = abs(x2 - x1)
             y_diff = abs(y2 - y1)
 
-            if x_diff < radius and y_diff < radius:
+            if x_diff < RADIUS and y_diff < RADIUS:
 
                 dis = np.sqrt(x_diff ** 2 + y_diff ** 2)
 
-                if dis <= radius:
+                if dis <= RADIUS:
                     distance.append(dis)
                     indicies[0].append(i)
                     indicies[1].append(j)
@@ -65,70 +92,87 @@ def construct_graph_connections(coord_list, radius):
 
 
 def construct_graph(indicies, distance, N):
+    # Conctruct a sparse row matrix with the distances between the connected cities
     graph = sp.sparse.csr_matrix((distance, indicies), shape=(N, N))
     return graph
 
 
-def find_shortest_path(graph, start_node, end_node):
+def find_shortest_path(graph, start_city, end_city):
+    # Find the pathline and total distance using function shortest_path
     D, predecessor = sp.sparse.csgraph.shortest_path(graph, directed=False, return_predecessors=True,
-                                                     indices=start_node)
-    path = [end_node]
-    i = end_node
-    while i != start_node:
+                                                     indices=start_city)
+    path = [end_city]
+    i = end_city
+    while i != start_city:
         i = predecessor[i]
-        path.insert(0,i)
+        path.insert(0, i)
 
-    return D[end_node], path
+    return D[end_city], path
 
-filename = 'SampleCoordinates.txt'
-connection_version = 'Fast"' #Write: 'Fast' or 'Slow'
+
+filename = 'GermanyCities.txt'  # Input name of file here, if its other than: sample, Hungary or Germany,
+# then input is stated below
+
+connection_version = 'Fast'  # Write: 'Fast' or 'Slow', for fast or slow connection version
 
 if filename == 'SampleCoordinates.txt':
-    radius = 0.08
-    start_node = 0
-    end_node = 5
+    RADIUS = 0.08
+    start_city = 0
+    end_city = 5
 elif filename == 'HungaryCities.txt':
-    radius = 0.005
-    start_node = 311
-    end_node = 702
+    RADIUS = 0.005
+    start_city = 311
+    end_city = 702
 elif filename == 'GermanyCities.txt':
-    radius = 0.0025
-    start_node = 31
-    end_node = 2
+    RADIUS = 0.0025
+    start_city = 31
+    end_city = 2
+else:
+    # Input radius, start_city & end_city here if you are not using one of the predescribed textfiles above
+    RADIUS = 1
+    start_city = 1
+    end_city = 1
 
+# Run through all the functions while calculating the time it takes with each one
 start_time1 = time.time()
 coord_list = (read_coordinate_file(filename))
 coord_time = time.time() - start_time1
 
+# Calcute N as the total length of coord_list
+N = len(coord_list)
+
 if connection_version == 'Fast':
     start_time = time.time()
-    indicies = construct_fast_graph_connections(coord_list, radius)
+    distance, indicies = construct_fast_graph_connections(coord_list, RADIUS)
     di_time = time.time() - start_time
 elif connection_version == 'Slow':
     start_time = time.time()
-    distance, indicies = construct_graph_connections(coord_list, radius)
+    distance, indicies = construct_graph_connections(coord_list, RADIUS)
     di_time = time.time() - start_time
-
-N = len(coord_list)
 
 start_time = time.time()
 graph = construct_graph(indicies, distance, N)
 graph_time = time.time() - start_time
 
 start_time = time.time()
-D, path = find_shortest_path(graph, start_node, end_node)
+D, path = find_shortest_path(graph, start_city, end_city)
 path_time = time.time() - start_time
 
 start_time = time.time()
 plot_points(coord_list, indicies, path)
 plot_time = time.time() - start_time
+program_time = time.time() - start_time1
 
-program_time = time.time()-start_time1
+# Print the output from the function: Shortest path and Total distance and the time it takes to run the program
+# and its functions
 
-print("\nThe total time to run the program with",filename,"is:",program_time,"s \n")
-print("Read coordinate file:",coord_time,"s")
-print("Construct graph connections:",di_time,"s")
-print("Construct graph:",graph_time,"s")
-print("Find shortest path:",path_time,"s")
-print("Plot:",plot_time,"s")
+print('Shortest path from ', start_city, 'to', end_city, 'is:', path)
+print('Totalt distance:', D)
+
+print("\nThe total time to run the program with", filename, "is:", program_time, "s \n")
+print("Read coordinate file:", coord_time, "s")
+print("Construct graph connections:", di_time, "s")
+print("Construct graph:", graph_time, "s")
+print("Find shortest path:", path_time, "s")
+print("Plot:", plot_time, "s")
 plt.show()
