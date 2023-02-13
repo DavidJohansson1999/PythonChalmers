@@ -1,0 +1,152 @@
+# DAT171 - Computer Assignment 2
+# David Johansson & Fredrik Nygren
+
+from enum import Enum
+from abc import ABC, abstractmethod
+import random
+
+
+class Suit(Enum):
+    Clubs = 1
+    Diamonds = 2
+    Hearts = 3
+    Spades = 4
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+
+class PlayingCard():
+    @abstractmethod
+    def get_value(self):
+        pass
+
+    def __eq__(self, other):
+        return self.get_value() == other.get_value()
+
+    def __lt__(self, other):
+        return self.get_value() < other.get_value()
+
+
+class NumberedCard(PlayingCard):
+    def __init__(self, value, suit):
+        self.suit = Suit(suit)
+        self.value = value
+
+    def get_value(self):
+        return self.value
+
+    def __repr__(self):
+        return f'{self.value} of {self.suit.name}'
+
+
+class JackCard(PlayingCard):
+    def __init__(self, suit):
+        self.suit = Suit(suit)
+        self.value = 11
+
+    def get_value(self):
+        return self.value
+
+    def __repr__(self):
+        return f'Jack of {self.suit.name}'
+
+
+class QueenCard(PlayingCard):
+    def __init__(self, suit):
+        self.suit = Suit(suit)
+        self.value = 12
+
+    def get_value(self):
+        return self.value
+
+    def __repr__(self):
+        return f'Queen of {self.suit.name}'
+
+
+class KingCard(PlayingCard):
+    def __init__(self, suit):
+        self.suit = Suit(suit)
+        self.value = 13
+
+    def get_value(self):
+        return self.value
+
+    def __repr__(self):
+        return f'King of {self.suit.name}'
+
+
+class AceCard(PlayingCard):
+    def __init__(self, suit):
+        self.suit = Suit(suit)
+        self.value = 14
+
+    def get_value(self):
+        return self.value
+
+    def __repr__(self):
+        return f'Ace of {self.suit.name}'
+
+
+class StandardDeck():
+    def __init__(self):
+        self.cards = []
+        for s in range(1, 5):
+            for v in range(2, 11):
+                self.cards.append(NumberedCard(v, s))
+            self.cards.append(JackCard(s))
+            self.cards.append(QueenCard(s))
+            self.cards.append(KingCard(s))
+            self.cards.append(AceCard(s))
+
+    def shuffle(self):
+        random.shuffle(self.cards)
+
+    def draw(self):
+        return self.cards.pop(0)
+
+
+class Hand():
+    def __init__(self):
+        self.hand = []
+
+    def add_card(self):
+        self.hand.append(deck.draw())
+
+    def drop_cards(self, cards_to_drop):
+        cards_to_drop.sort()
+        cards_to_drop.reverse()
+        for c in cards_to_drop:
+            self.hand.pop(c)
+
+    def sort(self):
+        self.hand.sort()
+
+    def best_poker_hand(self, cards=[]):
+        return  # PokerHand object
+
+    def __str__(self):
+        return f'{self.hand}'
+
+class PokerHand():
+
+    def high_card(self,):
+
+    def one_pair(self,):
+
+    def two_pair(self,):
+
+    def three_of_a_kind(self,):
+
+    def straight(self,):
+
+    def flush(self,):
+
+    def full_house(self,):
+
+    def four_of_a_kind(self,):
+
+    def straight_flush(self,):
+
+
+# Main Code
