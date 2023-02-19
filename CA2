@@ -4,8 +4,9 @@
 from enum import Enum
 from abc import ABC, abstractmethod
 import random
+import copy
 
-
+# Create the class Suit with enum
 class Suit(Enum):
     Clubs = 1
     Diamonds = 2
@@ -16,6 +17,7 @@ class Suit(Enum):
         return self.value == other.value
 
 
+# Create the abstract base class PlayingCard, make it possible to compare the cards with equal to and less than
 class PlayingCard():
     @abstractmethod
     def get_value(self):
@@ -27,7 +29,7 @@ class PlayingCard():
     def __lt__(self, other):
         return self.get_value() < other.get_value()
 
-
+# Create class NumberedCard, use __repr__ to make it easier to print, and get_value() for accessing the value of the card
 class NumberedCard(PlayingCard):
     def __init__(self, value, suit):
         self.suit = Suit(suit)
@@ -39,7 +41,7 @@ class NumberedCard(PlayingCard):
     def __repr__(self):
         return f'{self.value} of {self.suit.name}'
 
-
+# Create class JackCard
 class JackCard(PlayingCard):
     def __init__(self, suit):
         self.suit = Suit(suit)
@@ -51,7 +53,7 @@ class JackCard(PlayingCard):
     def __repr__(self):
         return f'Jack of {self.suit.name}'
 
-
+# Create class QueenCard
 class QueenCard(PlayingCard):
     def __init__(self, suit):
         self.suit = Suit(suit)
@@ -63,7 +65,7 @@ class QueenCard(PlayingCard):
     def __repr__(self):
         return f'Queen of {self.suit.name}'
 
-
+# Create class KingCard
 class KingCard(PlayingCard):
     def __init__(self, suit):
         self.suit = Suit(suit)
@@ -75,7 +77,7 @@ class KingCard(PlayingCard):
     def __repr__(self):
         return f'King of {self.suit.name}'
 
-
+# Create class AceCard
 class AceCard(PlayingCard):
     def __init__(self, suit):
         self.suit = Suit(suit)
@@ -87,7 +89,7 @@ class AceCard(PlayingCard):
     def __repr__(self):
         return f'Ace of {self.suit.name}'
 
-
+# Create class StandardDeck with the methods shuffle and draw
 class StandardDeck():
     def __init__(self):
         self.cards = []
@@ -105,48 +107,233 @@ class StandardDeck():
     def draw(self):
         return self.cards.pop(0)
 
-
+# Create class Hand
 class Hand():
     def __init__(self):
-        self.hand = []
+        self.cards = []
 
-    def add_card(self):
-        self.hand.append(deck.draw())
+    # Adding a card
+    def add_card(self, card):
+        self.cards.append(card)
 
+    # Dropping a card or multiple cards
     def drop_cards(self, cards_to_drop):
         cards_to_drop.sort()
         cards_to_drop.reverse()
         for c in cards_to_drop:
-            self.hand.pop(c)
+            self.cards.pop(c)
 
+    # Sort the hand by highest to lowest
     def sort(self):
-        self.hand.sort()
+        self.cards.sort()
 
+    # Calculating the best poker hand using the staticmethods below
     def best_poker_hand(self, cards=[]):
-        return  # PokerHand object
 
+        newcards = self.cards + cards
+
+        possiblehands = [self.high_card(newcards), self.one_pair(newcards), self.two_pair(newcards),
+                         self.three_of_a_kind(newcards), self.straight(newcards), self.flush(newcards),
+                         self.full_house(newcards), self.four_of_a_kind(newcards), self.straight_flush(newcards)]
+
+        for checkedhand in reversed(possiblehands):
+            if checkedhand is not None:
+                besthand = checkedhand
+                break
+        return PokerHand(besthand)
+
+
+    @staticmethod
+    def high_card(cards):
+        cards = [card.get_value() for card in cards] #gets the value of each card in the hand
+        cards.sort()
+        cards.reverse()
+        return (1, cards[0:5]) #returns 1 for "high_card" type and also the 5 highest cards (the hand)
+
+    @staticmethod
+    def one_pair(cards):
+        pairs = []
+        kickers = []
+        [pairs.append(card.get_value()) for card in cards if cards.count(card) > 1] #adding all pairs to "pairs"
+        [kickers.append(card.get_value()) for card in cards if card.get_value() not in pairs] #adding the value of the
+                                                                        #remaining cards (that are not part of a pair)
+        kickers.sort()
+        kickers.reverse()
+        if pairs != []:
+            return (2, [max(pairs), kickers[0:3]]) #returns 2 for "one_pair" type and also the 3 highest kickers
+
+    @staticmethod
+    def two_pair(cards):
+        pairs = []
+        newcards = copy.copy(cards)  #makes a copy of the cards, since we are removing cards later to
+        for card in newcards:                                       #avoid checking the same pair twice
+            if newcards.count(card) > 1:        #if we find a pair:
+                pairs.append(card.get_value())  #append that pair to "pairs"
+                newcards.remove(card)           #and remove it to avoid saving the same pair twice
+        if len(pairs) > 2:
+            pairs.remove(min(pairs))  #if we found more than two pairs, remove the lowest valued pair so we can
+        kicker = []                                                      #potentially use these cards as kickers
+        # adds the cards to kicker that is not part of a pair, or a card that are both part of a pair and a three
+        # of a kind, to kicker, this to be able to compare the highest card on the hand that is not part of one of
+        # the two best pairs if two players have the same two pairs
+        [kicker.append(card.get_value()) for card in newcards if card.get_value() not in pairs or cards.count(card) == 3]
+        if len(pairs) == 2: #if we have two pairs
+            pairs.sort()
+            pairs.reverse()
+            return (3, [(pairs), max(kicker)]) #returns 3 for "two_pair" type and also the highest kicker
+
+        elif len(pairs) > 2: #if the player get more than 2 pairs, we choose only the 2 highest cards
+            pairs.sort()
+            pairs.reverse()
+            return (3, [pairs[0:2], max(kicker)]) #returns 3 for "two_pair" type and also the highest kicker
+
+    @staticmethod
+    def three_of_a_kind(cards):
+        threes = []
+        [threes.append(card.get_value()) for card in cards if cards.count(card) > 2] #adding all three of a kinds to "threes"
+        kickers = []
+        [kickers.append(card.get_value()) for card in cards if card.get_value() not in threes]  # adding the remaining cars to "kickers"
+        kickers.sort()
+        kickers.reverse()
+        if threes != []: #if a three of a kind where found, return:
+            return (4, [max(threes), kickers[0:2]]) #returns 4 for "three_of_a_kind" and what card the three of a kind contains
+
+
+    @staticmethod
+    def straight(cards):
+        # If an Ace, then add a card with value = 1 in hand
+        cards = [card.get_value() for card in cards] \
+               + [(1) for card in cards if card.get_value() == 14]
+
+        for card in cards:  # Starting point (high card)
+            # Check if we have the value - k in the set of cards:
+            found_straight = True
+            for k in range(1, 5):
+                if (card - k) not in cards:
+                    found_straight = False
+                    break
+            if found_straight:
+                return (5, card) # Returning the value 5 for "straight", and the highest card in the straight
+
+    @staticmethod
+    def flush(cards):
+        flushhand = []
+        # Copy the cards to a new list
+        newhand = copy.copy(cards)
+
+        # Check each cards suit with every other cards suit to see if a there is a flush
+        for card1 in newhand:
+            newhand.remove(card1)
+            flushhand.append(card1.get_value())
+            for card2 in newhand:
+                if card1.suit == card2.suit:
+                    flushhand.append(card2.get_value())
+            if len(flushhand) > 4:
+                break
+            else:
+                flushhand = []
+
+        # It's a flush if the flushhand is 5 cards or longer
+        if len(flushhand) > 4:
+            flushhand.sort()
+            flushhand.reverse()
+            return (6, flushhand[0:5]) # Return the value 6 for "flush" and the values of the hand from highest to lowest
+
+    @staticmethod
+    def full_house(cards):
+        pairs = []
+        threes = []
+
+        [threes.append(card) for card in cards if cards.count(card) > 2] #adding all three of a kinds of a kinds to "threes"
+        threes.sort()
+        threes.reverse()
+        threes = threes[0:3]
+        [pairs.append(card) for card in cards if card not in threes and cards.count(card) > 1] #adding all pairs to "pairs"
+                                                                                  #(if they are not part of a three of a kind)
+        if pairs != [] and threes != []: #checks if we have at least one pair and at least one three of a kind
+            pair = max(pairs)
+            three = max(threes)
+            return (7, [three.get_value(), pair.get_value()]) #Returns the value 7 for "full_house", as well as the value of
+                                                                    #the three of a kind and the pair
+
+    @staticmethod
+    def four_of_a_kind(cards):
+        fours = []
+        [fours.append(card.get_value()) for card in cards if cards.count(card) > 3] #adding (all) four of a kind(s) to "fours"
+        kickers = []
+        [kickers.append(card.get_value()) for card in cards if card.get_value() not in fours]  # adding the remaining card to "kickers"
+        if fours != []:
+            return (8, max(fours), max(kickers)) #Returns the value 8 for "four_of_a_kind", as well as the value of the four
+                                                     #of a kind and the kicker
+
+
+    @staticmethod
+    def straight_flush(cards):
+        vals = [(c.get_value(), c.suit) for c in cards] \
+               + [(1, c.suit) for c in cards if c.get_value() == 14]  # Add the aces!
+        for c in cards:  # Starting point (high card)
+            # Check if we have the value - k in the set of cards:
+            found_straight = True
+            for k in range(1, 5):
+                if (c.get_value() - k, c.suit) not in vals:
+                    found_straight = False
+                    break
+            if found_straight:
+                return (9, c.get_value()) #Returns the value 9 for "straight_flush", as well as the value of the cards
+                                                                                                         #in the flush
+
+    # Method str for printing the hand
     def __str__(self):
-        return f'{self.hand}'
+        return f'{self.cards}'
+
 
 class PokerHand():
 
-    def high_card(self,):
+    def __init__(self, besthand):
+        self.besthand = besthand
 
-    def one_pair(self,):
+    # Methods for comparisons between two PokerHand objects
+    def __eq__(self, other):
+        return self.besthand == other.besthand
 
-    def two_pair(self,):
+    def __lt__(self, other):
+        return self.besthand < other.besthand
 
-    def three_of_a_kind(self,):
-
-    def straight(self,):
-
-    def flush(self,):
-
-    def full_house(self,):
-
-    def four_of_a_kind(self,):
-
-    def straight_flush(self,):
+    def __str__(self):
+        return f'{self.besthand}'  #Method str for printing the best hand
 
 
-# Main Code
+## A game of Texas Hold 'em
+d = StandardDeck()
+d.shuffle()
+
+h1 = Hand()
+h1.add_card(d.draw())
+h1.add_card(d.draw())
+h2 = Hand()
+h2.add_card(d.draw())
+h2.add_card(d.draw())
+
+cl = []
+cl.append(d.draw())
+cl.append(d.draw())
+cl.append(d.draw())
+cl.append(d.draw())
+cl.append(d.draw())
+
+print("Player 1's hand:", h1, "\n")
+print("Player 2's hand:", h2, "\n")
+print("The cards on the table:", cl,"\n\n")
+
+ph1 = h1.best_poker_hand(cl)
+print("Player 1's best poker hand:", ph1,"\n")
+
+ph2 = h2.best_poker_hand(cl)
+print("Player 2's best poker hand:", ph2, "\n")
+
+if ph1 > ph2:
+    print("Player 1 wins!")
+elif ph1 < ph2:
+    print("Player 2 wins!")
+else:
+    print("It's a draw!")
