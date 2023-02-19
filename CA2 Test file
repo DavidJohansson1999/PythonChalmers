@@ -1,0 +1,141 @@
+from enum import Enum
+import pytest
+
+from cardlib import *
+
+
+# This test assumes you call your suit class "Suit" and the suits "Hearts and "Spades"
+def test_cards():
+    h5 = NumberedCard(4, Suit.Hearts)
+    assert isinstance(h5.suit, Enum)
+
+    sk = KingCard(Suit.Spades)
+    assert sk.get_value() == 13
+
+    assert h5 < sk
+    assert h5 == h5
+
+    with pytest.raises(TypeError):
+        pc = PlayingCard(Suit.Clubs)
+
+
+# This test assumes you call your shuffle method "shuffle" and the method to draw a card "draw"
+def test_deck():
+    d = StandardDeck()
+    c1 = d.draw()
+    c2 = d.draw()
+    assert not c1 == c2
+
+    d2 = StandardDeck()
+    d2.shuffle()
+    c3 = d2.draw()
+    c4 = d2.draw()
+    assert not ((c3, c4) == (c1, c2))
+
+
+# This test builds on the assumptions above and assumes you store the cards in the hand in the list "cards",
+# and that your sorting method is called "sort" and sorts in increasing order
+def test_hand():
+    h = Hand()
+    assert len(h.cards) == 0
+    d = StandardDeck()
+    d.shuffle()
+    h.add_card(d.draw())
+    h.add_card(d.draw())
+    h.add_card(d.draw())
+    h.add_card(d.draw())
+    h.add_card(d.draw())
+    assert len(h.cards) == 5
+
+    h.sort()
+    for i in range(4):
+        assert h.cards[i] < h.cards[i + 1] or h.cards[i] == h.cards[i + 1]
+
+    cards = h.cards.copy()
+    h.drop_cards([4, 0, 1])
+
+    assert len(h.cards) == 2
+    assert h.cards[0] == cards[2]
+    assert h.cards[1] == cards[3]
+
+
+# This test builds on the assumptions above. Add your type and data for the commented out tests
+# and uncomment them!
+def test_pokerhands():
+    h1 = Hand()
+    h1.add_card(QueenCard(Suit.Diamonds))
+    h1.add_card(KingCard(Suit.Hearts))
+
+    h2 = Hand()
+    h2.add_card(QueenCard(Suit.Hearts))
+    h2.add_card(AceCard(Suit.Hearts))
+
+    cl = [NumberedCard(10, Suit.Diamonds), NumberedCard(9, Suit.Diamonds),
+          NumberedCard(8, Suit.Clubs), NumberedCard(6, Suit.Spades)]
+
+
+    ph1 = h1.best_poker_hand(cl)
+    assert isinstance(ph1, PokerHand)
+    ph2 = h2.best_poker_hand(cl)
+
+    #Test high_card
+    assert ph1.besthand == (1,[13,12,10,9,8]) # Check if ph1 is of handtype "high_card" and that the
+                                                 # five highest cards are [13,12,10,9,8]
+    assert ph2.besthand == (1,[14,12,10,9,8])  # Check if ph2 is of handtype "high_card" and that the
+                                                 # five highest cards are [14,12,10,9,8]
+    assert ph1 < ph2 # Check if ph2 wins over ph1, because it has the highest card
+
+    #Test one_pair
+    cl.pop(0)
+    cl.append(QueenCard(Suit.Spades))
+    ph3 = h1.best_poker_hand(cl)
+    ph4 = h2.best_poker_hand(cl)
+    assert ph3.besthand == (2, [12, [13, 9, 8]])  # Check if ph3 is of handtype "one_pair" of Queens (12) and that the
+                                                     # three highest kickers are [13, 9, 8]
+    assert ph4.besthand == (2, [12, [14, 9, 8]])  # Check if ph4 is of handtype "one_pair" of Queens (12) and that the
+                                                     # three highest kickers are [14, 9, 8]
+    assert ph3 < ph4  # Check if ph4 wins over ph3, because of the highest kicker card 14
+
+    #Test two_pair
+    cl = [QueenCard(Suit.Clubs), JackCard(Suit.Spades), KingCard(Suit.Clubs), AceCard(Suit.Spades)]
+    ph5 = h1.best_poker_hand(cl)
+    ph6 = h2.best_poker_hand(cl)
+    assert ph5.besthand == (3, [[13, 12], 14]) # Check if ph5 is of handtype "two_pair" of Kings (13) & Queens (12)
+                                                # and that the highest kicker is [11]
+    assert ph6.besthand == (3, [[14, 12], 13]) # Check if ph6 is of handtype "two_pair" of Aces (14) % Queens (12)
+                                                # and that the gighest kicker is [13]
+    assert ph5 < ph6 # Check if ph6 wins over ph5, because the highest pair
+
+    #Test three_of_a_kind
+    cl = [QueenCard(Suit.Clubs), QueenCard(Suit.Spades), NumberedCard(6,Suit.Clubs), NumberedCard(5,Suit.Spades)]
+    ph6 = h1.best_poker_hand(cl)
+    assert ph6.besthand == (4,[12,[13,6]]) # Check if ph6 is of handtype "three_of_a_kind" of Queens (12) and the
+                                                #two kickers are [13,12]
+
+    #Test straight
+    cl = [AceCard(Suit.Clubs), JackCard(Suit.Spades), NumberedCard(10, Suit.Clubs), NumberedCard(5, Suit.Spades)]
+    ph7 = h1.best_poker_hand(cl)
+    assert ph7.besthand == (5, 14) # Check if ph7 is of handtype "straight" with the highest card Ace (14)
+
+    #Test flush
+    cl = [NumberedCard(4, Suit.Hearts), NumberedCard(3,Suit.Hearts), NumberedCard(10, Suit.Hearts), NumberedCard(5, Suit.Hearts)]
+    ph8 = h1.best_poker_hand(cl)
+    ph9 = h2.best_poker_hand(cl)
+    assert ph8.besthand == (6, [13,10,5,4,3]) # Check if ph8 is of handtype "flush" with the values [13,10,5,4,3]
+    assert ph9.besthand == (6, [14,12,10,5,4]) # Check if ph9 is of handtype "flush" with the values [14,12,10,5,4]
+    assert ph8 < ph9 # Check if ph9 wins over ph8, because of the highest card (14) in the flush
+
+    #Test full_house
+    cl = [QueenCard(Suit.Clubs), QueenCard(Suit.Spades), KingCard(Suit.Clubs), KingCard(Suit.Spades)]
+    ph10 = h1.best_poker_hand(cl)
+    assert ph10.besthand == (7, [13,12]) # Check if ph10 is of handtype "full_house" with three Kings (13) and two Queens (12)
+
+    #Test four_of_a_kind
+    cl = [QueenCard(Suit.Clubs), QueenCard(Suit.Spades), QueenCard(Suit.Hearts), KingCard(Suit.Spades)]
+    ph11 = h1.best_poker_hand(cl)
+    assert ph11.besthand == (8, 12) # Check if ph11 is of handtype "four_of_a_kind" of Queens (12)
+
+    #Test straight_flush
+    cl = [AceCard(Suit.Hearts), JackCard(Suit.Hearts), NumberedCard(10, Suit.Hearts), QueenCard(Suit.Hearts)]
+    ph12 = h1.best_poker_hand(cl)
+    assert ph12.besthand == (9, 14) # Check if ph8 is of handtype "straigh_flush" with the highest card Ace (14)
