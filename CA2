@@ -8,10 +8,16 @@ import copy
 
 # Create the class Suit with enum
 class Suit(Enum):
-    Clubs = 1
-    Diamonds = 2
-    Hearts = 3
-    Spades = 4
+    """
+    Gives values to the four different suits: Clubs, Diamonds, Hearts and Spades
+    to make it possible to compare the suits by value
+    :param: Enum
+    :return: True or False, 'True' if '==' statement is True, 'False' if statement is False
+    """
+    Hearts = 0
+    Spades = 1
+    Clubs = 2
+    Diamonds = 3
 
     def __eq__(self, other):
         return self.value == other.value
@@ -19,6 +25,11 @@ class Suit(Enum):
 
 # Create the abstract base class PlayingCard, make it possible to compare the cards with equal to and less than
 class PlayingCard():
+    """
+    Checks which card is better out of two cards (or if they are equally good)
+    :param: poker cards to compare
+    :return: True or False, 'True' if '<' or '==' statement is True, 'False' if statement is False
+    """
     @abstractmethod
     def get_value(self):
         pass
@@ -31,6 +42,11 @@ class PlayingCard():
 
 # Create class NumberedCard, use __repr__ to make it easier to print, and get_value() for accessing the value of the card
 class NumberedCard(PlayingCard):
+    """
+    Creates a numbered playing card
+    :param PlayingCard: The value and suit of a playing card, ex. NumberedCard(8, Suit.Spades)
+    :return: A numbered playing card
+    """
     def __init__(self, value, suit):
         self.suit = Suit(suit)
         self.value = value
@@ -43,6 +59,11 @@ class NumberedCard(PlayingCard):
 
 # Create class JackCard
 class JackCard(PlayingCard):
+    """
+    Creates a playing card of the type Jack
+    :param PlayingCard: suit of playing card, ex. JackCard(Suit.Diamond).
+    :return: a Jack playing card
+    """
     def __init__(self, suit):
         self.suit = Suit(suit)
         self.value = 11
@@ -55,6 +76,11 @@ class JackCard(PlayingCard):
 
 # Create class QueenCard
 class QueenCard(PlayingCard):
+    """
+    Creates a playing card of the type Queen
+    :param PlayingCard: suit of playing card, ex. QueenCard(Suit.Diamond).
+    :return: a Queen playing card
+    """
     def __init__(self, suit):
         self.suit = Suit(suit)
         self.value = 12
@@ -67,6 +93,11 @@ class QueenCard(PlayingCard):
 
 # Create class KingCard
 class KingCard(PlayingCard):
+    """
+    Creates a playing card of the type King
+    :param PlayingCard: suit of playing card, ex. KingCard(Suit.Diamond).
+    :return: a King playing card
+    """
     def __init__(self, suit):
         self.suit = Suit(suit)
         self.value = 13
@@ -79,6 +110,11 @@ class KingCard(PlayingCard):
 
 # Create class AceCard
 class AceCard(PlayingCard):
+    """
+    Creates a playing card of the type Ace
+    :param PlayingCard: The suit of a playing card, ex. AceCard(Suit.Diamonds)
+    :return: An Ace playing card
+    """
     def __init__(self, suit):
         self.suit = Suit(suit)
         self.value = 14
@@ -93,7 +129,7 @@ class AceCard(PlayingCard):
 class StandardDeck():
     def __init__(self):
         self.cards = []
-        for s in range(1, 5):
+        for s in range(0, 4):
             for v in range(2, 11):
                 self.cards.append(NumberedCard(v, s))
             self.cards.append(JackCard(s))
@@ -102,10 +138,21 @@ class StandardDeck():
             self.cards.append(AceCard(s))
 
     def shuffle(self):
+        """
+        Shuffles a deck of playing cards
+        :param cards: A deck of playing cards.
+        :return: A shuffled deck of playing cards
+        """
         random.shuffle(self.cards)
 
     def draw(self):
+        """
+        Draws the top card of the deck
+        :param cards:
+        :return: The top card of the deck
+        """
         return self.cards.pop(0)
+
 
 # Create class Hand
 class Hand():
@@ -114,10 +161,21 @@ class Hand():
 
     # Adding a card
     def add_card(self, card):
+        """
+        Adds a specific card to the hand.
+        :param card: specific card type ex. QueenCard(Suit.Diamonds) or. NumberedCard(9,Suit.Hearts), or card from deck;
+        'deckname'.draw()
+        :return: The hand with the added card
+        """
         self.cards.append(card)
 
     # Dropping a card or multiple cards
     def drop_cards(self, cards_to_drop):
+        """
+        Removes one or multiple cards from a list of cards
+        :param cards_to_drop: A list of playing cards to drop
+        :return: A list of the remaining playing cards
+        """
         cards_to_drop.sort()
         cards_to_drop.reverse()
         for c in cards_to_drop:
@@ -125,26 +183,42 @@ class Hand():
 
     # Sort the hand by highest to lowest
     def sort(self):
+        """
+        Sorts a list of card by value
+        :param cards: A list of playing cards to sort
+        :return: The sorted list of playing cards
+        """
         self.cards.sort()
 
     # Calculating the best poker hand using the staticmethods below
     def best_poker_hand(self, cards=[]):
 
-        newcards = self.cards + cards
+        """
+        Calculates the best poker hand out of a list of cards
+        :param cards: A list of playing cards.
+        :return: The best poker hand
+        """
 
+        newcards = self.cards + cards # The cards on the table and the cards on the hand
+        #All the possible hands
         possiblehands = [self.high_card(newcards), self.one_pair(newcards), self.two_pair(newcards),
                          self.three_of_a_kind(newcards), self.straight(newcards), self.flush(newcards),
                          self.full_house(newcards), self.four_of_a_kind(newcards), self.straight_flush(newcards)]
 
-        for checkedhand in reversed(possiblehands):
-            if checkedhand is not None:
+        for checkedhand in reversed(possiblehands): #Going through all possible hands from best to worst, breaking when
+            if checkedhand is not None:               #we found one that is not 'None' and saving it as 'besthand'
                 besthand = checkedhand
                 break
-        return PokerHand(besthand)
+        return PokerHand(besthand) #returning the besthand as a PokerHand object
 
 
     @staticmethod
     def high_card(cards):
+        """
+        Checks for the highest card in a list of cards.
+        :param cards: A list of playing cards.
+        :return: (1, the five highest cards), '1' for high card.
+        """
         cards = [card.get_value() for card in cards] #gets the value of each card in the hand
         cards.sort()
         cards.reverse()
@@ -152,6 +226,12 @@ class Hand():
 
     @staticmethod
     def one_pair(cards):
+        """
+        Checks for the best pair in a list of cards, as well as the other three cards with the highest value.
+        :param cards: A list of playing cards.
+        :return: None if no pair is found, else a tuple of (2, [pair, highest card]), '2' for one pair.
+        """
+
         pairs = []
         kickers = []
         [pairs.append(card.get_value()) for card in cards if cards.count(card) > 1] #adding all pairs to "pairs"
@@ -164,6 +244,12 @@ class Hand():
 
     @staticmethod
     def two_pair(cards):
+        """
+        Checks for the best two pairs in a list of cards.
+        :param cards: A list of playing cards.
+        :return: None if not two pairs are found, else a tuple of (3, [[pair1, pair2], kicker), '3' for two pairs,
+        pair1 = highest pair, pair2 = second highest pair, kicker = highest card not in one of the two highest pairs
+        """
         pairs = []
         newcards = copy.copy(cards)  #makes a copy of the cards, since we are removing cards later to
         for card in newcards:                                       #avoid checking the same pair twice
@@ -189,6 +275,11 @@ class Hand():
 
     @staticmethod
     def three_of_a_kind(cards):
+        """
+        Checks for the best thee of a kind in a list of cards.
+        :param cards: A list of playing cards.
+        :return: None if no three of a kind is found, else a tuple of (3, [three of a kind, kickers])
+        """
         threes = []
         [threes.append(card.get_value()) for card in cards if cards.count(card) > 2] #adding all three of a kinds to "threes"
         kickers = []
@@ -201,6 +292,11 @@ class Hand():
 
     @staticmethod
     def straight(cards):
+        """
+        Checks for the best straight of a kind in a list of cards.
+        :param cards: A list of playing cards.
+        :return: None if no straight is found, else a tuple of (5, [highest card in straight])
+        """
         # If an Ace, then add a card with value = 1 in hand
         cards = [card.get_value() for card in cards] \
                + [(1) for card in cards if card.get_value() == 14]
@@ -217,6 +313,11 @@ class Hand():
 
     @staticmethod
     def flush(cards):
+        """
+        Checks for the best flush in a list of cards.
+        :param cards: A list of playing cards.
+        :return: None if no flush is found, else a tuple of (6, [five highest cards in the flush])
+        """
         flushhand = []
         # Copy the cards to a new list
         newhand = copy.copy(cards)
@@ -241,6 +342,11 @@ class Hand():
 
     @staticmethod
     def full_house(cards):
+        """
+        Checks for the best full house of a kind in a list of cards.
+        :param cards: A list of playing cards.
+        :return: None if no full house is found, else a tuple of (7, [three of a kind, pair])
+        """
         pairs = []
         threes = []
 
@@ -258,6 +364,11 @@ class Hand():
 
     @staticmethod
     def four_of_a_kind(cards):
+        """
+        Checks for a four of a kind in a list of cards.
+        :param cards: A list of playing cards.
+        :return: None if no four of a kind is found, else a tuple of (8, value of the cards in the four of a kind, highest kicker)
+        """
         fours = []
         [fours.append(card.get_value()) for card in cards if cards.count(card) > 3] #adding (all) four of a kind(s) to "fours"
         kickers = []
@@ -269,6 +380,11 @@ class Hand():
 
     @staticmethod
     def straight_flush(cards):
+        """
+        Checks for the best straight of a kind in a list of cards.
+        :param cards: A list of playing cards.
+        :return: None if no straight flush is found, else a tuple of (9, highest card in straight flush)
+        """
         vals = [(c.get_value(), c.suit) for c in cards] \
                + [(1, c.suit) for c in cards if c.get_value() == 14]  # Add the aces!
         for c in cards:  # Starting point (high card)
@@ -288,7 +404,11 @@ class Hand():
 
 
 class PokerHand():
-
+    """
+    Checks which hand is better out of two hands (or if they are equally good).
+    :param: Pokerhands.
+    :return: True or False, 'True' if '<' or '==' statement is True, 'False' if statement is False
+    """
     def __init__(self, besthand):
         self.besthand = besthand
 
